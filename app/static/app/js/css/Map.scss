@@ -8,8 +8,23 @@
         }
 
         .asset-links{
+            li:first-child{
+                display: none;
+            }
+            &.loading{
+                li{ display: none }
+                li:first-child{
+                    display: block;
+                }
+                padding-left: 0;
+                list-style-type: none;
+            }
             margin-top: 8px;
             padding-left: 16px;
+
+            columns: 2;
+            -webkit-columns: 2;
+            -moz-columns: 2;
         }
         .switchModeButton{
             bottom: 12px;
@@ -31,9 +46,18 @@
         margin-bottom: 6px;
     }
 
-    .shareButton{
+    .actionButtons{
+        position: absolute;
         z-index: 2000;
-        bottom: 11px;
-        right: 38px;
+        right: 12px;
+        bottom: 20px;
+        & > *{
+            display: inline-block;
+            margin-left: 12px;
+        }
+    }
+
+    .standby{
+        z-index: 1000;
     }
 }

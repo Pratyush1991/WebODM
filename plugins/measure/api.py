@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework import status
 from rest_framework.response import Response
 
-from app.api.tasks import TaskNestedView
+from app.plugins.views import TaskView
 
 from worker.tasks import execute_grass_script
 
@@ -16,11 +16,11 @@ class GeoJSONSerializer(serializers.Serializer):
     area = serializers.JSONField(help_text="Polygon contour defining the volume area to compute")
 
 
-class TaskVolume(TaskNestedView):
+class TaskVolume(TaskView):
     def post(self, request, pk=None):
         task = self.get_and_check_task(request, pk)
         if task.dsm_extent is None:
-            return Response({'error': 'No surface model available'})
+            return Response({'error': 'No surface model available. From the Dashboard, select this task, press Edit, from the options make sure to check "dsm", then press Restart --> From DEM.'})
 
         serializer = GeoJSONSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -36,12 +36,15 @@ class TaskVolume(TaskNestedView):
             context.add_param('dsm_file', dsm)
             context.set_location(dsm)
 
-            output = execute_grass_script.delay(os.path.join(
+            result = execute_grass_script.delay(os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "calc_volume.grass"
             ), context.serialize()).get()
-            if isinstance(output, dict) and 'error' in output: raise GrassEngineException(output['error'])
 
+            if not isinstance(result, dict): raise GrassEngineException("Unexpected output from GRASS (expected dict)")
+            if 'error' in result: raise GrassEngineException(result['error'])
+
+            output = result.get('output', '')
             cols = output.split(':')
             if len(cols) == 7:
                 return Response({'volume': str(abs(float(cols[6])))}, status=status.HTTP_200_OK)

@@ -15,6 +15,7 @@
 
     .name{
         padding-left: 0;
+        margin-top: 4px;
     }
     
     .details{
@@ -41,6 +42,8 @@
         padding: 4px;
         width: 100%;
         font-size: 90%;
+        border-style: solid;
+        border-width: 1px;
     }
 
     .clickable:hover{
@@ -54,6 +57,8 @@
 
         .task-warning{
             margin-top: 16px;
+            margin-bottom: 16px;
+
             i.fa.fa-warning{
                 color: #ff8000;
             }
@@ -95,5 +100,22 @@
 
     .inline{
         display: inline;
+    }
+
+    .console-switch{
+        margin-right: 10px;
+        margin-bottom: 8px;
+        position: relative;
+        z-index: 99;
+        .console-output-label{
+            margin-right: 8px;
+        }
+        .console-output-label, ul{
+            display: inline-block;
+        }
+    }
+    
+    .mb{
+        margin-bottom: 12px;
     }
 }

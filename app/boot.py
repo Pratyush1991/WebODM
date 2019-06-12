@@ -11,7 +11,7 @@ from guardian.shortcuts import assign_perm
 from worker import tasks as worker_tasks
 from app.models import Preset
 from app.models import Theme
-from app.plugins import register_plugins
+from app.plugins import init_plugins
 from nodeodm.models import ProcessingNode
 # noinspection PyUnresolvedReferences
 from webodm.settings import MEDIA_ROOT
@@ -25,7 +25,7 @@ from webodm.wsgi import booted
 def boot():
     # booted is a shared memory variable to keep track of boot status
     # as multiple gunicorn workers could trigger the boot sequence twice
-    if not settings.DEBUG and booted.value: return
+    if (not settings.DEBUG and booted.value) or settings.MIGRATING: return
 
     booted.value = True
     logger = logging.getLogger('app.logger')
@@ -37,7 +37,7 @@ def boot():
 
     # Make sure our app/media/tmp folder exists
     if not os.path.exists(settings.MEDIA_TMP):
-        os.mkdir(settings.MEDIA_TMP)
+        os.makedirs(settings.MEDIA_TMP)
 
     # Check default group
     try:
@@ -81,7 +81,7 @@ def boot():
 
             logger.info("Created settings")
 
-        register_plugins()
+        init_plugins()
 
         if not settings.TESTING:
             try:
@@ -96,21 +96,43 @@ def boot():
 
 def add_default_presets():
     try:
+        Preset.objects.update_or_create(name='Volume Analysis', system=True,
+                                        defaults={'options': [{'name': 'dsm', 'value': True},
+                                                              {'name': 'dem-resolution', 'value': '2'},
+                                                              {'name': 'depthmap-resolution', 'value': '1000'}]})
+        Preset.objects.update_or_create(name='3D Model', system=True,
+                                        defaults={'options': [{'name': 'mesh-octree-depth', 'value': "11"},
+                                                              {'name': 'use-3dmesh', 'value': True},
+                                                              {'name': 'depthmap-resolution', 'value': '1000'},
+                                                              {'name': 'mesh-size', 'value': '600000'}]})
+        Preset.objects.update_or_create(name='Buildings', system=True,
+                                        defaults={'options': [{'name': 'mesh-octree-depth', 'value': "10"},
+                                                              {'name': 'mesh-size', 'value': '300000'},
+                                                              {'name': 'depthmap-resolution', 'value': '1000'},
+                                                              {'name': 'texturing-nadir-weight', 'value': "28"}]})
+        Preset.objects.update_or_create(name='Point of Interest', system=True,
+                                        defaults={'options': [{'name': 'matcher-neighbors', 'value': "24"},
+                                                              {'name': 'mesh-size', 'value': '600000'},
+                                                              {'name': 'use-3dmesh', 'value': True}]})
+        Preset.objects.update_or_create(name='Forest', system=True,
+                                        defaults={'options': [{'name': 'min-num-features', 'value': "18000"},
+                                                              {'name': 'matcher-neighbors', 'value': "21"},
+                                                              {'name': 'texturing-data-term', 'value': "area"}]})
         Preset.objects.update_or_create(name='DSM + DTM', system=True,
                                         defaults={
-                                            'options': [{'name': 'dsm', 'value': True}, {'name': 'dtm', 'value': True},
-                                                        {'name': 'mesh-octree-depth', 'value': 6}]})
+                                            'options': [{'name': 'dsm', 'value': True}, {'name': 'dtm', 'value': True}]})
         Preset.objects.update_or_create(name='Fast Orthophoto', system=True,
                                         defaults={'options': [{'name': 'fast-orthophoto', 'value': True}]})
-        Preset.objects.update_or_create(name='High Quality', system=True,
-                                        defaults={'options': [{'name': 'dsm', 'value': True},
-                                                              {'name': 'mesh-octree-depth', 'value': "12"},
-                                                              {'name': 'dem-resolution', 'value': "0.04"},
-                                                              {'name': 'orthophoto-resolution', 'value': "40"},
+        Preset.objects.update_or_create(name='High Resolution', system=True,
+                                        defaults={'options': [{'name': 'ignore-gsd', 'value': True},
+                                                              {'name': 'dsm', 'value': True},
+                                                              {'name': 'depthmap-resolution', 'value': '1000'},
+                                                              {'name': 'dem-resolution', 'value': "2.0"},
+                                                              {'name': 'orthophoto-resolution', 'value': "2.0"},
                                                               ]})
         Preset.objects.update_or_create(name='Default', system=True,
-                                        defaults={'options': [{'name': 'dsm', 'value': True},
-                                                              {'name': 'mesh-octree-depth', 'value': 6}]})
+                                        defaults={'options': [{'name': 'dsm', 'value': True}]})
+
     except MultipleObjectsReturned:
         # Mostly to handle a legacy code problem where
         # multiple system presets with the same name were

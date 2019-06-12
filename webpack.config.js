@@ -1,10 +1,11 @@
+const webpack = require('webpack');
 let path = require("path");
-let webpack = require('webpack');
 let BundleTracker = require('webpack-bundle-tracker');
 let ExtractTextPlugin = require('extract-text-webpack-plugin');
 let LiveReloadPlugin = require('webpack-livereload-plugin');
 
 module.exports = {
+  mode: 'development',
   context: __dirname,
 
   entry: {
@@ -25,6 +26,9 @@ module.exports = {
     new BundleTracker({filename: './webpack-stats.json'}),
     new ExtractTextPlugin('css/[name]-[hash].css', {
         allChunks: true
+    }),
+    new webpack.ProvidePlugin({
+        THREE: path.join(__dirname, './app/static/app/js/vendor/potree/three')
     })
   ],
 
@@ -37,11 +41,14 @@ module.exports = {
           {
             loader: 'babel-loader',
             query: {
-              "plugins": [
-                 'syntax-class-properties',
-                 'transform-class-properties'
+              plugins: [
+                 '@babel/syntax-class-properties',
+                 '@babel/proposal-class-properties'
               ],
-              presets: ['es2015', 'react']
+              presets: [
+                '@babel/preset-env',
+                '@babel/preset-react'
+              ]
             }
           }
         ],

@@ -43,9 +43,12 @@ if [ "$1" = "--setup-devenv" ] || [ "$2" = "--setup-devenv" ]; then
     
     echo Setup npm dependencies...
     npm install
-    cd nodeodm/external/node-OpenDroneMap
+    cd nodeodm/external/NodeODM
     npm install
     cd /webodm
+
+    echo Setup pip requirements...
+    pip install -r requirements.txt
 
     echo Setup webpack watch...
     webpack --watch &
@@ -54,8 +57,12 @@ fi
 echo Running migrations
 python manage.py migrate
 
-if [[ "$1" = "--create-default-pnode" ]]; then
+if [[ "$WO_CREATE_DEFAULT_PNODE" = "YES" ]]; then
    echo "from nodeodm.models import ProcessingNode; ProcessingNode.objects.update_or_create(hostname='node-odm-1', defaults={'hostname': 'node-odm-1', 'port': 3000})" | python manage.py shell
+fi
+
+if [[ "$WO_CREATE_MICMAC_PNODE" = "YES" ]]; then
+   echo "from nodeodm.models import ProcessingNode; ProcessingNode.objects.update_or_create(hostname='node-micmac-1', defaults={'hostname': 'node-micmac-1', 'port': 3000})" | python manage.py shell
 fi
 
 export WO_HOST="${WO_HOST:=localhost}"
@@ -74,11 +81,25 @@ cat app/scripts/unlock_all_tasks.py | python manage.py shell
 
 congrats(){
     (sleep 5; echo
-    echo -e "\033[92m"      
-    echo "Congratulations! └@(･◡･)@┐"
-    echo ==========================
-    echo -e "\033[39m"
-    echo "If there are no errors, WebODM should be up and running!"
+
+    echo "Trying to establish communication..."
+    status=$(curl --max-time 300 -L -s -o /dev/null -w "%{http_code}" "$proto://localhost:8000")
+
+    if [[ "$status" = "200" ]]; then
+        echo -e "\033[92m"      
+        echo "Congratulations! └@(･◡･)@┐"
+        echo ==========================
+        echo -e "\033[39m"
+        echo "If there are no errors, WebODM should be up and running!"
+    else    
+        echo -e "\033[93m"
+        echo "Something doesn't look right! ¯\_(ツ)_/¯"
+        echo "The server returned a status code of $status when we tried to reach it."
+        echo ==========================
+        echo -e "\033[39m"
+        echo "Check if WebODM is running, maybe we tried to reach it too soon."
+    fi
+
     echo -e "\033[93m"
     echo Open a web browser and navigate to $proto://$WO_HOST:$WO_PORT
     echo -e "\033[39m"
